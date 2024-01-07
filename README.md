@@ -1,70 +1,45 @@
-# m-portal-aws-kms-key
-This Terraform module facilitates the creation and management of keys in the AWS Key Management Service (KMS), including the option to create keys replicated across multiple regions. The module provides flexibility by allowing users to define custom IAM policy statements and offers predefined policies for common scenarios. **For additional resources, examples, and community engagement**, check out the portal [Cloud Collab Hub](https://cloudcollab.com) :cloud:.
+# AWS KMS
 
-## Usage
-**Loading...** ⌛
+## Purpose
 
-For more detailed examples and use cases, check out the files in the how-to-usage directory. They provide additional scenarios and explanations for leveraging the features of the aws_kms_key module.
+Terraform module which create KMS CMK(Customer Managed Key) and policies on AWS.
 
-## Module Inputs
+## Features
 
-| Name                         | Type                 | Description                                                                                                      | Default Value | Required      |
-| ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- | ------------- |
-| key_name                     | string               | The name of the KMS key.                                                                                         |               | Yes           |
-| key_description              | string               | The description of the KMS key.                                                                                  |               | Yes           |
-| key_usage                    | string               | Specifies the intended use of the KMS key. Valid values: ENCRYPT_DECRYPT or SIGN_VERIFY.                           | ENCRYPT_DECRYPT| No            |
-| customer_master_key_spec     | string               | Specifies whether the KMS key is a standard key or a FIPS-compliant key. Valid values: SYMMETRIC_DEFAULT or RSA_3072. | SYMMETRIC_DEFAULT| No            |
-| is_enabled                   | bool                 | Specifies whether the KMS key is enabled.                                                                       | true          | No            |
-| enable_key_rotation          | bool                 | Specifies whether key rotation is enabled.                                                                     | false         | No            |
-| multi_region                 | bool                 | Specifies whether the KMS key can be replicated into different regions.                                          | false         | No            |
-| additional_tags              | map(string)          | A map of default tags to apply to the KMS key.                                                                  | {}            | No            |
-| deletion_window_in_days      | number               | The number of days in the key deletion period. Must be between 7 and 30 days.                                     | 30            | No            |
+Below features are supported:
 
-#### Replica Variables
+  * Pre-configured Key policy for Admin, TFE and SSO Users  
+  * Key rotation support
+  * Option to add other aws accounts to use the key for chryptograpic purpose
+  * KMS grant policy
 
-| Name                         | Type                 | Description                                                                                                      | Default Value | Required      |
-| ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- | ------------- |
-| create_replica               | bool                 | If true, create a replicated KMS key.                                                                           | false         | No            |
-| key_replica_name             | string               | Name of the replicated KMS key.                                                                                 | ReplicaKey    | No            |
-| description_replica          | string               | Description of the replicated KMS key.                                                                         |               | No            |
-| is_enabled_replica           | bool                 | If true, the replicated KMS key will be enabled.                                                                | true          | No            |
-| policy_replica               | string               | Policy for the replicated KMS key.                                                                              |               | No            |
-| replica_region               | string               | The region where the replicated KMS key will be created.                                                        | null          | No            |
+## Prerequisites
 
-#### Policy Variables
+Requires terraform version >= 0.12
 
-| Name                         | Type                 | Description                                                                                                      | Default Value | Required      |
-| ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------- | ------------- |
-| enable_default_policy        | bool                 | Enable the default policy allowing account-wide access to all key operations.                                   | true          | No            |
-| key_administrators           | list(string)         | List of AWS principals who are key administrators.                                                              | []            | No            |
-| key_users                    | list(string)         | List of AWS principals who are key users.                                                                       | []            | No            |
-| custom_iam_policy_statement  | list(map(string))    | List of custom policy statements.                                                                               | []            | No            |
-| replica_key_administrators   | list(string)         | List of AWS principals who are key administrators for the replica key.                                          | []            | No            |
-| replica_key_users            | list(string)         | List of AWS principals who are key users for the replica key.                                                   | []            | No            |
-| replica_custom_iam_policy_statement | list(map(string)) | List of custom policy statements for the replica key.                                                           | []            | No            |
+## Inputs
 
-### Module Outputs
+| Name | Description | Type | Default | Required |
+|------|-------------|:----:|:-----:|:-----:|
+|account-number|AWS Account number where the KMS key needs to be created.|string|-|Yes|
+|key-name|A friendly name for the key to create i.e. my-account-primary-encryption-key.|string|-|Yes|
+|key-usage|The intended use of the key. Valid values: `ENCRYPT_DECRYPT`, `SIGN_VERIFY`, or `GENERATE_VERIFY_MAC`.|string|`ENCRYPT_DECRYPT`|No|
+|key-description|The description of the key as viewed in AWS console.|string|`null`|No|
+|customer-master-key-spec|Specify the key contains a symmetric key or an asymmetric key pair and the encryption algorithms or signing algorithms that the key supports. Valid values: `SYMMETRIC_DEFAULT`, `RSA_2048`, `RSA_3072`, `RSA_4096`, `HMAC_256`, `ECC_NIST_P256`, `ECC_NIST_P384`, `ECC_NIST_P521`, or `ECC_SECG_P256K1`.|string|`SYMMETRIC_DEFAULT`|No|
+|is-enabled|Whether the key is enabled.|bool|`true`|No|
+|switch-tfe-role-to-user|Does the TFE standard role `tfRole` need to be changed to user `tf-user` for the key management if tfe role doesn't exist in account.|bool|`false`|No|
+|services|AWS service names that need access to the KMS key - for example `cloudtrail.amazonaws.com`.|list(string)|`[]`|No|
+|enable-key-rotation|Whether key rotation is enabled.|bool|`false`|No|
+|multi-region|Whether the KMS key is a multi-Region key.|bool|`false`|No|
+|additional-key-policy-documents|List of additional Key policy json documents that are merged together into the pre-defined policy.|list(string)|`null`|No|
+|override-key-policy-documents|List of Key policy json documents that need to override any pre-defined policy by merging, when merging statements with non-blank sids will override statements with the same sid from documents in the list.|list(string)|`null`|No|
+|enable-default-policy|Default key policy statement gives permission to control the key to the account principal, which represents the AWS account and its administrators, including the account root user. Unlike other AWS resource policies, an AWS KMS key policy does not automatically give permission to the account or any of its identities.|bool|`true`|No|
+|sso-users|Key permission for SSO users.|list(string)|`null`|Yes|
+|granter-users-arns|List of granters who can create temproary token and id for a grantee like other aws services to use KMS for chryptographic usage on their behalf.|list(string)|`null`|No|
+|other-aws-account-ids|List of other aws account ids which need access to use the key for cryptographic operations.|list(string)|`null`|No|
 
-| Name             | Description                                   | Exported Attributes                                       |
-| ---------------- | --------------------------------------------- | --------------------------------------------------------- |
-| kms_key          | All exported KMS key attributes.              | aws_kms_key.primary_key                                    |
-| kms_replica_key  | All exported KMS replica key attributes.      | aws_kms_replica_key.replica_key                            |
+## Outputs
 
-## How to Use Output Attributes
-primary_key_arn = module.example_kms.kms_key.arn
-**OR**
-replica_key_arn = module.example_kms.kms_replica_key["arn"]
-
-## License
-
-This project is licensed under the MIT License - see the [MIT License](https://opensource.org/licenses/MIT) file for details.
-
-## Contributing
-
-Contributions are welcome! Please follow the guidance below for details on how to contribute to this project:
-
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin feature/your-feature-name`
-5. Open a pull request
+| Name | Description | Type |
+|------|-------------|:----:|
+|kms_key|all exported kms key attributes|map|
